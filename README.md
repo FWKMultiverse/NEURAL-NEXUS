@@ -58,10 +58,10 @@ Overfitting occurs when a model memorizes training data rather than learning gen
 
 | Run | Epochs | Observed Overfitting |
 |---|---|---|
-| Previous run | 100 | **0.000** — maintained across all 100 epochs |
-| Current run | 140 | 0.000–0.001 — fluctuating, self-correcting |
+| Previous run | 100 | **0.000** — stayed at or near zero throughout, confirmed at end of training |
+| Current run | 140 | In progress — results pending |
 
-The current run shows overfitting occasionally touching 0.001 before returning to 0.000 on the next epoch — consistent with an active self-regulation mechanism rather than a model drifting toward memorization.
+The previous 100-epoch run completed with overfitting remaining at 0.000 throughout, with occasional brief touches of 0.001 that returned to 0.000 — never accumulating. The current 140-epoch run is still in progress and results will be updated when training completes.
 
 ### Why overfitting stays low
 
@@ -85,7 +85,7 @@ The architecture combines several independent mechanisms that collectively resis
 
 ### Expected behavior at 140 epochs
 
-Overfitting is expected to remain within 0.000–0.003 throughout the full run. The architecture has no single point of failure that would cause a sudden spike. If overfitting rises slightly, multiple independent mechanisms push it back down — which is already observable in the current run: epoch 19 showed 0.001, epoch 21 returned to 0.000, epoch 22 returned to 0.001. Oscillating at a low level rather than accumulating.
+Based on the previous run and the expanded dataset, overfitting is expected to remain within 0.000–0.003 throughout the full run. The architecture has no single point of failure that would cause a sudden spike. Results will be confirmed when training completes.
 
 ---
 
@@ -134,7 +134,7 @@ A 2025 ScienceDirect review of 187 deep learning financial forecasting studies c
 | News events | 2,904 | 4,129 (+42%) |
 | Batch size | 32 | 32 (effective 64 with accumulation) |
 | Timeframes | M1 · M5 · M15 · H1 · H4 | M1 · M5 · M15 · H1 · H4 |
-| Overfitting | **0.000** | 0.000–0.001 (self-correcting) |
+| Overfitting | **0.000** — confirmed at end of training | Pending |
 | Validated accuracy | 36.7% | Pending |
 
 ---
