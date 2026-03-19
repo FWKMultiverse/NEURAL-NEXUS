@@ -47,7 +47,22 @@ Random guessing on 5 classes = **20% accuracy baseline**
 
 **Current run (140 epochs):** Training in progress — results will be updated when complete.
 
-For context: most published research reports accuracy on binary (2-class) problems where random baseline is 50%. Achieving 1.84× above random on a 5-class problem is substantially harder than it appears on paper.
+### Context: How This Compares to Published Research
+
+Most academic papers on gold price prediction report performance on **regression** (predicting price value) or **binary classification** (up vs down, random baseline = 50%) — not 5-class directional strength prediction like this system.
+
+Selected comparisons from recent literature:
+
+| Study | Method | Task | Result |
+|---|---|---|---|
+| Amini & Kalantari (2024), *PLOS ONE* | CNN + BiLSTM | Gold price regression | High regression accuracy on historical data only |
+| Cheng et al. (2022), cited in *Springer Neural Computing* | Multi-modal GNN + LSTM | Stock movement (binary) | F1 ~0.48 on binary classification |
+| ST-GNN study (ScienceDirect, 2024) | Spatial-Temporal GNN | Gold/silver price movement (binary) | Binary classification on daily data |
+| Neural-Nexus (this project) | GATv2 + GIN + LSTM + NLP | **5-class directional + strength** | **36.7% (1.84× above random), live MT5 execution** |
+
+The key difference: published research almost exclusively tests on **historical backtests** and **daily data**. Neural-Nexus operates on **intraday multi-timeframe data** and has been validated in **live market conditions**, including the March 19, 2026 gold crash.
+
+*Sources: Amini & Kalantari (2024) doi:10.1371/journal.pone.0298426 · Springer Neural Computing and Applications (2025) doi:10.1007/s00521-025-11586-8 · ScienceDirect Spatial-Temporal GNN (2024) doi:10.1016/j.mex.2024.102693*
 
 ---
 
