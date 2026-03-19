@@ -44,11 +44,26 @@ The model predicts across **5 classes** simultaneously — not just up or down.
 | Baseline | Value |
 |---|---|
 | Random guessing (5 classes) | 20% |
-| Previous run — 100 epochs | **36.7%** (1.84× above random, zero overfitting) |
-| Current run — 140 epochs | Training in progress |
+| Previous run — 100 epochs | **36.7%** (1.84× above random) |
+| Current run — 140 epochs | Training in progress — results pending |
 
 **Why 36.7% on 5 classes is harder than it looks:**
-Most published research reports binary classification (up vs down) where random baseline is 50%. Getting to 53% on binary — as seen in recent GNN + news papers — means being only 1.06× above random. Neural-Nexus at 36.7% on 5 classes is 1.84× above random, meaning it learns more from the data relative to what chance would predict.
+Most published research reports binary classification (up vs down) where random baseline is 50%. Getting to 53% on binary — as seen in recent GNN + news papers — means being only 1.06× above random. Neural-Nexus at 36.7% on 5 classes is 1.84× above random, meaning it learns significantly more from data relative to chance.
+
+---
+
+## Overfitting
+
+Overfitting occurs when a model memorizes training data rather than learning general patterns — it performs well on training data but fails on unseen data. This is one of the most common failure modes in ML trading systems.
+
+| Run | Epochs | Overfitting |
+|---|---|---|
+| Previous run | 100 | **0.000** — zero overfitting across all epochs |
+| Current run | 140 | Pending — monitoring in progress |
+
+**Previous run achieved 0.000 overfitting across 100 full epochs.** This is notable because more epochs typically increase overfitting risk, especially with limited training data. Maintaining zero overfitting at 100 epochs indicates the architecture and regularization are well-calibrated.
+
+The current 140-epoch run uses 3× more training samples (46,000 vs 16,000) and 42% more news coverage. More data generally reduces overfitting risk. Whether 0.000 is maintained at 140 epochs with the expanded dataset will be confirmed when training completes.
 
 ---
 
@@ -76,7 +91,7 @@ A 2025 LSTM + Transformer sentiment model showed that news sentiment provides ad
 | News integration | Optional add-on | Core component, live-aligned |
 | Validation | Historical backtest only | Live market — MT5 Demo |
 | Execution layer | None (paper models) | Full MT5 order execution |
-| Overfitting | Often present | 0.000 across 100 epochs |
+| Overfitting (100 epochs) | Often present | **0.000** |
 
 The most significant gap is execution. Most hybrid LSTM-GNN studies demonstrate performance on historical data only and do not address real-time trading. Neural-Nexus has been running on live market data including the March 19, 2026 gold crash.
 
@@ -101,8 +116,10 @@ The most significant gap is execution. Most hybrid LSTM-GNN studies demonstrate 
 | News events | 2,904 | 4,129 (+42%) |
 | Batch size | 32 | 32 (effective 64 with accumulation) |
 | Timeframes | M1 · M5 · M15 · H1 · H4 | M1 · M5 · M15 · H1 · H4 |
-| Overfitting | 0.000 | In progress |
-| Validated accuracy | 36.7% | In progress |
+| Overfitting | **0.000** | Pending |
+| Validated accuracy | 36.7% | Pending |
+
+The increase from 16,000 to 46,000 samples means the model now sees nearly **3× more market situations** during training. Combined with 42% more news coverage and 40 additional epochs, the current run is expected to produce a more robust model.
 
 ---
 
