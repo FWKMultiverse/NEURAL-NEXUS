@@ -41,34 +41,58 @@ The graph structure is generated automatically at runtime from raw OHLCV data. N
 
 The model predicts across **5 classes** simultaneously — not just up or down.
 
-Random guessing on 5 classes = **20% accuracy baseline**
+| Baseline | Value |
+|---|---|
+| Random guessing (5 classes) | 20% |
+| Previous run — 100 epochs | **36.7%** (1.84× above random, zero overfitting) |
+| Current run — 140 epochs | Training in progress |
 
-**Previous run (100 epochs):** 36.7% validated accuracy — 1.84× better than random, zero overfitting
+**Why 36.7% on 5 classes is harder than it looks:**
+Most published research reports binary classification (up vs down) where random baseline is 50%. Getting to 53% on binary — as seen in recent GNN + news papers — means being only 1.06× above random. Neural-Nexus at 36.7% on 5 classes is 1.84× above random, meaning it learns more from the data relative to what chance would predict.
 
-**Current run (140 epochs):** Training in progress — results will be updated when complete.
+---
 
-### Context: How This Compares to Published Research
+## How It Compares to Published Research
 
-Most academic papers on gold price prediction report performance on **regression** (predicting price value) or **binary classification** (up vs down, random baseline = 50%) — not 5-class directional strength prediction like this system.
+This section is included for context — not to claim superiority. The field is genuinely difficult and results are rarely directly comparable across studies.
 
-Selected comparisons from recent literature:
+### What most research does
 
-| Study | Method | Task | Result |
-|---|---|---|---|
-| Amini & Kalantari (2024), *PLOS ONE* | CNN + BiLSTM | Gold price regression | High regression accuracy on historical data only |
-| Cheng et al. (2022), cited in *Springer Neural Computing* | Multi-modal GNN + LSTM | Stock movement (binary) | F1 ~0.48 on binary classification |
-| ST-GNN study (ScienceDirect, 2024) | Spatial-Temporal GNN | Gold/silver price movement (binary) | Binary classification on daily data |
-| Neural-Nexus (this project) | GATv2 + GIN + LSTM + NLP | **5-class directional + strength** | **36.7% (1.84× above random), live MT5 execution** |
+A February 2025 arXiv paper combining LSTM + GNN for stock prediction achieved MSE of 0.00144 — a 10.6% improvement over standalone LSTM, tested on historical backtest data only. The same paper acknowledges that empirical evaluations in real-world conditions remain limited for hybrid LSTM-GNN models.
 
-The key difference: published research almost exclusively tests on **historical backtests** and **daily data**. Neural-Nexus operates on **intraday multi-timeframe data** and has been validated in **live market conditions**, including the March 19, 2026 gold crash.
+A hybrid GNN model integrating news achieved 53% accuracy on binary stock movement — representing a 1% absolute gain over the LSTM baseline, tested on daily data with no live execution.
 
-*Sources: Amini & Kalantari (2024) doi:10.1371/journal.pone.0298426 · Springer Neural Computing and Applications (2025) doi:10.1007/s00521-025-11586-8 · ScienceDirect Spatial-Temporal GNN (2024) doi:10.1016/j.mex.2024.102693*
+A 2025 ScienceDirect review of 187 deep learning financial forecasting studies confirms the dominance of LSTM-based models, while noting that hybrid architectures combining GNN with other components are gaining ground.
+
+A 2025 LSTM + Transformer sentiment model showed that news sentiment provides additive value over price-only models, tested on daily stock data.
+
+### What Neural-Nexus does differently
+
+| Dimension | Most Published Research | Neural-Nexus |
+|---|---|---|
+| Task | Binary (up/down) or regression | 5-class (direction + strength) |
+| Data frequency | Daily candles | Intraday — M1 through H4 |
+| Timeframes | Single timeframe | 5 timeframes as a unified graph |
+| News integration | Optional add-on | Core component, live-aligned |
+| Validation | Historical backtest only | Live market — MT5 Demo |
+| Execution layer | None (paper models) | Full MT5 order execution |
+| Overfitting | Often present | 0.000 across 100 epochs |
+
+The most significant gap is execution. Most hybrid LSTM-GNN studies demonstrate performance on historical data only and do not address real-time trading. Neural-Nexus has been running on live market data including the March 19, 2026 gold crash.
+
+### Honest limitations
+
+- Training data is limited to ~2 years of intraday XAUUSD data
+- News coverage is partial — not all market-moving events are captured
+- 46,000 training samples is small by research standards
+- The model has not been tested across other instruments
+- Live demo testing is still early — long-term track record is not yet established
+
+*Sources: Sonani et al. (2025) arXiv:2502.15813 · Vallarino (2025) Journal of Economic Analysis 4(3):109 · Hybrid GNN-News paper, ICAIR 2025 · ScienceDirect Deep Learning Review (2025) doi:10.1016/j.irfa.2025.103988*
 
 ---
 
 ## Training Comparison
-
-Each run builds on the previous — more data, more epochs, better coverage.
 
 | Parameter | Previous Run | Current Run |
 |---|---|---|
@@ -79,8 +103,6 @@ Each run builds on the previous — more data, more epochs, better coverage.
 | Timeframes | M1 · M5 · M15 · H1 · H4 | M1 · M5 · M15 · H1 · H4 |
 | Overfitting | 0.000 | In progress |
 | Validated accuracy | 36.7% | In progress |
-
-The increase from 16,000 to 46,000 samples means the model now sees nearly **3× more market situations** during training. Combined with 42% more news coverage, the current run is expected to generalize significantly better across different market conditions.
 
 ---
 
@@ -114,8 +136,6 @@ Before any order is placed, the signal must pass every filter simultaneously:
 
 If any single filter fails → **HOLD**. The system waits for the next cycle.
 
-This is intentional behavior. A system that knows when not to trade is more valuable than one that trades frequently.
-
 **Live test result:** During the March 19, 2026 gold market crash — one of the sharpest single-day selloffs in recent history — the system held all positions closed for over 8 hours without a single order. Balance unchanged.
 
 ---
@@ -124,17 +144,9 @@ This is intentional behavior. A system that knows when not to trade is more valu
 
 - **Input:** Multi-timeframe OHLCV data across 5 timeframes + news sentiment vectors
 - **Labels:** Derived from trade outcome simulation — whether TP or SL would have been hit — not raw price direction
-- **Sampling:** Streaming mode — samples drawn continuously from historical data, training begins immediately without waiting for a full scan
+- **Sampling:** Streaming mode — samples drawn continuously from historical data
 - **Validation:** Time-based split to prevent data leakage — future data is never seen during training
-- **Checkpointing:** Automatic — training resumes from last saved state if interrupted
-
----
-
-## Monitoring
-
-The system reports modality attribution per epoch — showing how much each component (graph, temporal, news) contributed to predictions. This confirms all four modalities are actively used, not just one carrying all the weight.
-
-Live inference logs show per-step output: signal class, confidence score, market regime, lot size, and account balance.
+- **Checkpointing:** Automatic — resumes from last saved state if interrupted
 
 ---
 
