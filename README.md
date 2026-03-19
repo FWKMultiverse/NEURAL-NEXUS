@@ -45,24 +45,27 @@ Random guessing on 5 classes = **20% accuracy baseline**
 
 **Previous run (100 epochs):** 36.7% validated accuracy — 1.84× better than random, zero overfitting
 
-**Current run:** 140 epochs — training in progress. Results will be updated when complete.
+**Current run (140 epochs):** Training in progress — results will be updated when complete.
 
 For context: most published research reports accuracy on binary (2-class) problems where random baseline is 50%. Achieving 1.84× above random on a 5-class problem is substantially harder than it appears on paper.
 
 ---
 
-## Training — Current Run
+## Training Comparison
 
-| Parameter | Value |
-|---|---|
-| Epochs | 140 |
-| Samples | 46,000 |
-| Batch size | 32 (effective 64 with gradient accumulation) |
-| Timeframes | M1 · M5 · M15 · H1 · H4 |
-| News events | 4,129 |
-| Overfitting (previous run) | 0.000 |
+Each run builds on the previous — more data, more epochs, better coverage.
 
-Training uses streaming mode — samples are drawn from historical data continuously rather than loading the full dataset into memory.
+| Parameter | Previous Run | Current Run |
+|---|---|---|
+| Epochs | 100 | 140 |
+| Training samples | ~16,000 | 46,000 (+188%) |
+| News events | 2,904 | 4,129 (+42%) |
+| Batch size | 32 | 32 (effective 64 with accumulation) |
+| Timeframes | M1 · M5 · M15 · H1 · H4 | M1 · M5 · M15 · H1 · H4 |
+| Overfitting | 0.000 | In progress |
+| Validated accuracy | 36.7% | In progress |
+
+The increase from 16,000 to 46,000 samples means the model now sees nearly **3× more market situations** during training. Combined with 42% more news coverage, the current run is expected to generalize significantly better across different market conditions.
 
 ---
 
@@ -106,6 +109,7 @@ This is intentional behavior. A system that knows when not to trade is more valu
 
 - **Input:** Multi-timeframe OHLCV data across 5 timeframes + news sentiment vectors
 - **Labels:** Derived from trade outcome simulation — whether TP or SL would have been hit — not raw price direction
+- **Sampling:** Streaming mode — samples drawn continuously from historical data, training begins immediately without waiting for a full scan
 - **Validation:** Time-based split to prevent data leakage — future data is never seen during training
 - **Checkpointing:** Automatic — training resumes from last saved state if interrupted
 
