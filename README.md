@@ -43,11 +43,26 @@ The model predicts across **5 classes** simultaneously — not just up or down.
 
 Random guessing on 5 classes = **20% accuracy baseline**
 
-Current validated accuracy: **36.7%** — trained on 100 epochs, zero overfitting
+**Previous run (100 epochs):** 36.7% validated accuracy — 1.84× better than random, zero overfitting
 
-This represents **1.84× better than random**, which is significantly stronger than it appears. Most published research reports accuracy on binary (2-class) problems where random baseline is 50%. On that scale, 36.7% on 5 classes is equivalent to approximately **92% on a binary problem** — a level that is theoretically impossible to reach consistently in live markets.
+**Current run:** 140 epochs — training in progress. Results will be updated when complete.
 
-The number will be updated as training progresses.
+For context: most published research reports accuracy on binary (2-class) problems where random baseline is 50%. Achieving 1.84× above random on a 5-class problem is substantially harder than it appears on paper.
+
+---
+
+## Training — Current Run
+
+| Parameter | Value |
+|---|---|
+| Epochs | 140 |
+| Samples | 46,000 |
+| Batch size | 32 (effective 64 with gradient accumulation) |
+| Timeframes | M1 · M5 · M15 · H1 · H4 |
+| News events | 4,129 |
+| Overfitting (previous run) | 0.000 |
+
+Training uses streaming mode — samples are drawn from historical data continuously rather than loading the full dataset into memory.
 
 ---
 
@@ -91,8 +106,7 @@ This is intentional behavior. A system that knows when not to trade is more valu
 
 - **Input:** Multi-timeframe OHLCV data across 5 timeframes + news sentiment vectors
 - **Labels:** Derived from trade outcome simulation — whether TP or SL would have been hit — not raw price direction
-- **Samples:** 46,000 per training run, streamed from historical data
-- **Validation:** Time-based split to prevent data leakage — future data never seen during training
+- **Validation:** Time-based split to prevent data leakage — future data is never seen during training
 - **Checkpointing:** Automatic — training resumes from last saved state if interrupted
 
 ---
@@ -127,7 +141,8 @@ Unauthorized reproduction, reverse engineering, or redistribution of any part of
 
 ## Status
 
-Active development. Currently in live testing phase on MT5 Demo account.
+Active development. Currently training — 140 epoch run in progress.
+Live testing on MT5 Demo account follows training completion.
 Results are instrument-specific (XAUUSD) and depend on training data, market conditions, and configuration.
 
 Credentials and account details are stored locally and never shared or committed to any repository.
