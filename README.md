@@ -10,7 +10,7 @@ Automated trading engine for XAUUSD (Gold) using a Spatio-Temporal Graph Neural 
 
 Neural-Nexus is a machine-learning system that trades XAUUSD autonomously. Unlike conventional bots that apply fixed rules or look at a single timeframe, this system learns market structure from historical data and adapts its behavior to current conditions in real time.
 
-The core distinction: five timeframes are processed **simultaneously as a unified graph** — not sequentially, not averaged. The model understands how M1, M5, M15, H1, and H4 relate to each other at any given moment, not just what each one says in isolation.
+The core distinction: five timeframes are processed **simultaneously as a unified graph** — not sequentially, not averaged. The model understands how M1, M5, M15, H1, and H4 relate to each other at any given moment, not just what each one says in isolation. This allows it to detect whether a short-term move is supported or contradicted by longer-term structure — something a single-timeframe model cannot see.
 
 ---
 
@@ -25,7 +25,7 @@ Four components run in parallel and are fused together — not chained one after
 | **LSTM + Self-Attention** | Extracts temporal dependencies from the price sequence |
 | **NLP Encoder** | Encodes news sentiment as a direct quantitative input to the model |
 
-All four outputs are merged through a **CrossModalAttention** layer and a **Multi-Modal Fusion gate** with entropy regularization. This prevents any single component from dominating — all four must contribute meaningfully.
+All four outputs are merged through a **CrossModalAttention** layer and a **Multi-Modal Fusion gate** with entropy regularization. This prevents any single component from dominating — all four must contribute meaningfully to every prediction.
 
 **Timeframes:** M1 · M5 · M15 · H1 · H4 — processed simultaneously as one graph
 
@@ -45,16 +45,18 @@ The model predicts across **5 classes** simultaneously — not just up or down.
 |---|---|
 | Random guessing (5 classes) | 20% |
 | Previous run — 100 epochs | **36.7%** (1.84× above random) |
-| Current run — 120 epochs | **41.8%** (2.09× above random) |
+| Current run — 120 epochs | **41.8%** (2.09× above random) — confirmed |
 
-**Why 41.8% on 5 classes is harder than it looks:**
-Most published research reports binary classification (up vs down) where random baseline is 50%. Getting to 53% on binary — as seen in recent GNN + news papers — means being only 1.06× above random. Neural-Nexus at 41.8% on 5 classes is 2.09× above random — a meaningful improvement over the previous run and substantially stronger than it appears on paper.
+**Why 41.8% on 5 classes matters:**
+Most published research reports binary classification (up vs down) where random baseline is 50%. Getting to 53% on binary — as seen in recent GNN + news papers — means being only 1.06× above random. Neural-Nexus at 41.8% on 5 classes is 2.09× above random — meaningfully stronger relative to chance than most published results on simpler tasks, and a clear improvement over the previous 1.84×.
+
+The improvement from 36.7% to 41.8% between runs came from three changes: 3× more training samples (16,000 → 46,000), 42% more news coverage, and 20 additional training epochs with better stability controls.
 
 ---
 
 ## Training Stability
 
-The current version includes a multi-layer stability system built directly into the training loop. This was developed in response to real instability observed during training on live hardware, not added preemptively.
+The current version includes a multi-layer stability system built directly into the training loop. This was developed in response to real instability observed during training on live hardware — not added preemptively.
 
 ### NaN Guard — 4 layers
 
@@ -78,15 +80,11 @@ Batches that produce NaN loss have their source sample indices flagged. These sa
 
 ### Checkpoint integrity
 
-When resuming from a saved checkpoint, all model parameters are verified for finite values before loading. A corrupted checkpoint (containing NaN/Inf) is detected and discarded — training restarts from scratch rather than propagating the corruption.
+When resuming from a saved checkpoint, all model parameters are verified for finite values before loading. A corrupted checkpoint is detected and discarded — training restarts from scratch rather than propagating the corruption.
 
 ### Overfitting auto-control
 
-The system monitors overfitting per epoch and applies graduated responses:
-- If overfitting exceeds a soft threshold → learning rate decay + dropout increase
-- If overfitting exceeds a hard threshold → escalated response logged
-
-Target overfitting band: 0.000–0.001 throughout training.
+The system monitors overfitting per epoch and applies graduated responses — learning rate decay and dropout increase when overfitting exceeds the soft threshold, with escalated response at the hard threshold. Target band: 0.000–0.001 throughout training.
 
 ---
 
@@ -94,34 +92,32 @@ Target overfitting band: 0.000–0.001 throughout training.
 
 Overfitting occurs when a model memorizes training data rather than learning general patterns — it performs well on seen data but fails on unseen data. This is one of the most common failure modes in ML trading systems.
 
-| Run | Epochs | Observed Overfitting |
-|---|---|---|
-| Previous run | 100 | **0.000** — stayed at or near zero throughout, confirmed at end of training |
-| Current run | 120 | **0.000–0.001** — confirmed across all 120 epochs, never exceeded 0.001 |
+| Run | Epochs | Overfitting at 0.000 | Overfitting at 0.001 | Peak |
+|---|---|---|---|---|
+| Previous run | 100 | 100 epochs | 0 epochs | 0.000 |
+| Current run | 120 | 109 epochs | 11 epochs | 0.001 |
 
-The current 120-epoch run completed with overfitting touching 0.001 on 11 occasions out of 120 epochs, returning to 0.000 every time without accumulating. The remaining 109 epochs held at exactly 0.000. Overfitting never exceeded 0.001 at any point in the run.
+The 11 epochs that touched 0.001 were scattered across the full run with no accumulation trend — epochs 11, 21, 23, 35–37, 52, 103, 106, 119, and 120. All returned to 0.000 on the following epoch. The model never crossed above 0.001 across 120 full epochs.
 
 ### Why overfitting stays low
 
-**Multi-modal diversity** — Four separate components each learn from a different view of the same market. For overfitting to occur, all four would need to memorize the same patterns simultaneously. If one component drifts, the others remain stable and pull the fused output back toward generalization.
+**Multi-modal diversity** — Four separate components each learn from a different view of the same market. For overfitting to occur, all four would need to memorize the same patterns simultaneously. If one component drifts, the others remain stable and pull the output back toward generalization.
 
-**Fusion gate with entropy regularization** — The gate combining all four components is actively penalized during training if it collapses too much weight onto any single component. The model cannot overfit by routing everything through one pathway — the loss function resists it directly.
+**Fusion gate with entropy regularization** — The gate combining all four components is actively penalized during training if it collapses too much weight onto any single component. The model cannot overfit by routing everything through one pathway.
 
-**Agent diversity term** — Four internal agents each produce independent predictions. The training loss includes a term that penalizes the agents for agreeing too strongly — encouraging diverse perspectives rather than converging to a single overfit solution.
+**Agent diversity term** — Four internal agents produce independent predictions. The training loss penalizes the agents for agreeing too strongly — encouraging diverse perspectives rather than converging to a single overfit solution.
 
 **Epoch bagging** — Each epoch trains on a random 85% subset of available samples, reducing the model's ability to memorize any specific example.
 
-**Label smoothing** — Rather than training on hard labels, the model trains on softened targets. This prevents overconfidence on any specific training example.
+**Label smoothing** — The model trains on softened targets rather than hard labels. This prevents overconfidence on any specific training example.
 
-**Return-weighted loss** — Samples with larger actual market moves receive higher weight. This de-emphasizes borderline or noisy samples that would otherwise encourage memorization.
+**Return-weighted loss** — Samples with larger actual market moves receive higher weight, de-emphasizing borderline or noisy samples that would otherwise encourage memorization.
 
-**EWC — Elastic Weight Consolidation** — Preserves knowledge from earlier in training by penalizing large changes to parameters that were previously important. This prevents the model from overwriting general knowledge with patterns seen only in later batches.
+**EWC — Elastic Weight Consolidation** — Preserves knowledge from earlier in training by penalizing large changes to parameters that were previously important. Prevents the model from overwriting general patterns with late-stage specifics.
 
-**Dropout and weight decay** — Standard regularization applied throughout all components.
+**Dropout, weight decay, gradient clipping** — Standard regularization applied throughout all components.
 
-**Gradient clipping** — Limits parameter update magnitude each step, preventing drastic changes in response to any single batch.
-
-**Expanding validation** — Validation set grows over time rather than remaining fixed. This tests the model against an increasing proportion of unseen data as training progresses.
+**Expanding validation** — Validation set grows over time rather than remaining fixed, testing the model against an increasing proportion of unseen data as training progresses.
 
 ---
 
@@ -131,7 +127,7 @@ This section is included for context — not to claim superiority. The field is 
 
 ### What most research does
 
-A February 2025 arXiv paper combining LSTM + GNN for stock prediction achieved MSE of 0.00144 — a 10.6% improvement over standalone LSTM, tested on historical backtest data only. The same paper acknowledges that empirical evaluations in real-world conditions remain limited for hybrid LSTM-GNN models.
+A February 2025 arXiv paper combining LSTM + GNN for stock prediction achieved a 10.6% improvement in MSE over standalone LSTM — tested on historical backtest data only. The same paper acknowledges that empirical evaluation in real-world conditions remains limited for hybrid LSTM-GNN models.
 
 A hybrid GNN model integrating news achieved 53% accuracy on binary stock movement — representing a 1% absolute gain over the LSTM baseline, tested on daily data with no live execution.
 
@@ -147,8 +143,10 @@ A 2025 ScienceDirect review of 187 deep learning financial forecasting studies c
 | News integration | Optional add-on | Core component, live-aligned |
 | Validation | Historical backtest only | Live market — MT5 Demo |
 | Execution layer | None (paper models) | Full MT5 order execution |
-| Overfitting (100 epochs) | Often present | **0.000** |
+| Overfitting (120 epochs) | Often present | 0.000–0.001 — never exceeded |
 | Training stability | Not addressed | 4-layer NaN guard + auto recovery |
+
+The most significant difference is execution. Most hybrid LSTM-GNN studies remain paper models. Neural-Nexus has been running on live market data, including the March 19, 2026 gold crash.
 
 ### Honest limitations
 
@@ -174,8 +172,8 @@ A 2025 ScienceDirect review of 187 deep learning financial forecasting studies c
 | Validation mode | Fixed split | Expanding split |
 | NaN guard | Basic | 4-layer + auto recovery + quarantine |
 | Overfitting control | Passive | Active auto-control with target band |
-| Overfitting | **0.000** — confirmed | **0.000–0.001** — never exceeded 0.001 across all 120 epochs |
-| Validated accuracy | 36.7% | **41.8%** (+5.1 percentage points) |
+| Peak overfitting | 0.000 | 0.001 |
+| Validated accuracy | 36.7% | **41.8%** (+5.1pp) |
 
 ---
 
@@ -207,7 +205,7 @@ Before any order is placed, the signal must pass every filter simultaneously:
 - Market spread is within acceptable range
 - RSI must not contradict the signal direction
 
-If any single filter fails → **HOLD**. The system waits for the next cycle.
+If any single filter fails → **HOLD**. The system waits for the next cycle. Knowing when not to act is as important as knowing when to act.
 
 **Live test result:** During the March 19, 2026 gold market crash — one of the sharpest single-day selloffs in recent history — the system held all positions closed for over 8 hours without a single order. Balance unchanged.
 
@@ -217,8 +215,8 @@ If any single filter fails → **HOLD**. The system waits for the next cycle.
 
 - **Input:** Multi-timeframe OHLCV data across 5 timeframes + news sentiment vectors
 - **Labels:** Derived from trade outcome simulation — whether TP or SL would have been hit — not raw price direction
-- **Sampling:** Streaming mode — samples drawn continuously from historical data
-- **Validation:** Expanding time-based split — validation set grows as training progresses, future data is never seen during training
+- **Sampling:** Streaming mode — samples drawn continuously from historical data; training begins immediately without waiting for a full data scan
+- **Validation:** Expanding time-based split — validation set grows as training progresses; future data is never seen during training
 - **Checkpointing:** Full state saved every epoch — model, optimizer, scheduler, epoch number. Resumes from last valid checkpoint if interrupted. Corrupted checkpoints are detected and discarded automatically.
 
 ---
@@ -245,9 +243,9 @@ Unauthorized reproduction, reverse engineering, or redistribution of any part of
 
 ## Status
 
-Active development. Training complete — 120 epoch run finished March 20, 2026.
-Final validated accuracy: **41.8%** (2.09× above random on 5-class prediction). Overfitting held at 0.000–0.001 throughout, never exceeding 0.001.
+120-epoch training run complete — March 20, 2026.
+Validated accuracy: **41.8%** (2.09× above random on 5-class prediction).
+Peak overfitting: **0.001** across 120 epochs.
 Live testing on MT5 Demo account in progress.
-Results are instrument-specific (XAUUSD) and depend on training data, market conditions, and configuration.
 
-Credentials and account details are stored locally and never shared or committed to any repository.
+Results are instrument-specific (XAUUSD) and depend on training data, market conditions, and configuration. Credentials and account details are stored locally and never shared or committed to any repository.
