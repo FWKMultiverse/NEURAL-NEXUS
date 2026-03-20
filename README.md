@@ -45,10 +45,10 @@ The model predicts across **5 classes** simultaneously — not just up or down.
 |---|---|
 | Random guessing (5 classes) | 20% |
 | Previous run — 100 epochs | **36.7%** (1.84× above random) |
-| Current run — 120 epochs | Training in progress — results pending |
+| Current run — 120 epochs | **41.8%** (2.09× above random) |
 
-**Why 36.7% on 5 classes is harder than it looks:**
-Most published research reports binary classification (up vs down) where random baseline is 50%. Getting to 53% on binary — as seen in recent GNN + news papers — means being only 1.06× above random. Neural-Nexus at 36.7% on 5 classes is 1.84× above random, meaning it learns significantly more from data relative to chance.
+**Why 41.8% on 5 classes is harder than it looks:**
+Most published research reports binary classification (up vs down) where random baseline is 50%. Getting to 53% on binary — as seen in recent GNN + news papers — means being only 1.06× above random. Neural-Nexus at 41.8% on 5 classes is 2.09× above random — a meaningful improvement over the previous run and substantially stronger than it appears on paper.
 
 ---
 
@@ -97,7 +97,9 @@ Overfitting occurs when a model memorizes training data rather than learning gen
 | Run | Epochs | Observed Overfitting |
 |---|---|---|
 | Previous run | 100 | **0.000** — stayed at or near zero throughout, confirmed at end of training |
-| Current run | 120 | In progress — results pending |
+| Current run | 120 | **0.000–0.001** — confirmed across all 120 epochs, never exceeded 0.001 |
+
+The current 120-epoch run completed with overfitting touching 0.001 on 11 occasions out of 120 epochs, returning to 0.000 every time without accumulating. The remaining 109 epochs held at exactly 0.000. Overfitting never exceeded 0.001 at any point in the run.
 
 ### Why overfitting stays low
 
@@ -172,8 +174,8 @@ A 2025 ScienceDirect review of 187 deep learning financial forecasting studies c
 | Validation mode | Fixed split | Expanding split |
 | NaN guard | Basic | 4-layer + auto recovery + quarantine |
 | Overfitting control | Passive | Active auto-control with target band |
-| Overfitting | **0.000** — confirmed | Pending |
-| Validated accuracy | 36.7% | Pending |
+| Overfitting | **0.000** — confirmed | **0.000–0.001** — never exceeded 0.001 across all 120 epochs |
+| Validated accuracy | 36.7% | **41.8%** (+5.1 percentage points) |
 
 ---
 
@@ -243,8 +245,9 @@ Unauthorized reproduction, reverse engineering, or redistribution of any part of
 
 ## Status
 
-Active development. Currently training — 120 epoch run in progress.
-Live testing on MT5 Demo account follows training completion.
+Active development. Training complete — 120 epoch run finished March 20, 2026.
+Final validated accuracy: **41.8%** (2.09× above random on 5-class prediction). Overfitting held at 0.000–0.001 throughout, never exceeding 0.001.
+Live testing on MT5 Demo account in progress.
 Results are instrument-specific (XAUUSD) and depend on training data, market conditions, and configuration.
 
 Credentials and account details are stored locally and never shared or committed to any repository.
