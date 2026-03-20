@@ -45,10 +45,48 @@ The model predicts across **5 classes** simultaneously — not just up or down.
 |---|---|
 | Random guessing (5 classes) | 20% |
 | Previous run — 100 epochs | **36.7%** (1.84× above random) |
-| Current run — 140 epochs | Training in progress — results pending |
+| Current run — 120 epochs | Training in progress — results pending |
 
 **Why 36.7% on 5 classes is harder than it looks:**
 Most published research reports binary classification (up vs down) where random baseline is 50%. Getting to 53% on binary — as seen in recent GNN + news papers — means being only 1.06× above random. Neural-Nexus at 36.7% on 5 classes is 1.84× above random, meaning it learns significantly more from data relative to chance.
+
+---
+
+## Training Stability
+
+The current version includes a multi-layer stability system built directly into the training loop. This was developed in response to real instability observed during training on live hardware, not added preemptively.
+
+### NaN Guard — 4 layers
+
+Numerical instability (NaN/Inf loss) can silently corrupt a training run if undetected. The system intercepts it at four independent points:
+
+**Layer 1 — Model outputs:** Forward pass output is checked before loss computation. If any value is non-finite, the batch is skipped immediately.
+
+**Layer 2 — Loss value:** Loss is checked before backward pass. Non-finite loss triggers immediate batch skip with gradient clear.
+
+**Layer 3 — Gradients:** All parameter gradients are verified before the optimizer step. Non-finite gradients trigger skip without updating weights.
+
+**Layer 4 — Parameters:** Model weights are verified after each optimizer step. If parameters become non-finite, the step is rolled back.
+
+### Automatic epoch recovery
+
+If invalid-loss batches exceed 25% of an epoch, the system triggers automatic recovery: learning rate is reduced, AMP (mixed precision) is disabled if needed, and the best checkpoint is restored before continuing to the next epoch.
+
+### Sample quarantine
+
+Batches that produce NaN loss have their source sample indices flagged. These samples are excluded from subsequent epochs. A maximum quarantine ratio of 30% prevents over-pruning the dataset.
+
+### Checkpoint integrity
+
+When resuming from a saved checkpoint, all model parameters are verified for finite values before loading. A corrupted checkpoint (containing NaN/Inf) is detected and discarded — training restarts from scratch rather than propagating the corruption.
+
+### Overfitting auto-control
+
+The system monitors overfitting per epoch and applies graduated responses:
+- If overfitting exceeds a soft threshold → learning rate decay + dropout increase
+- If overfitting exceeds a hard threshold → escalated response logged
+
+Target overfitting band: 0.000–0.001 throughout training.
 
 ---
 
@@ -59,13 +97,9 @@ Overfitting occurs when a model memorizes training data rather than learning gen
 | Run | Epochs | Observed Overfitting |
 |---|---|---|
 | Previous run | 100 | **0.000** — stayed at or near zero throughout, confirmed at end of training |
-| Current run | 140 | In progress — results pending |
-
-The previous 100-epoch run completed with overfitting remaining at 0.000 throughout, with occasional brief touches of 0.001 that returned to 0.000 — never accumulating. The current 140-epoch run is still in progress and results will be updated when training completes.
+| Current run | 120 | In progress — results pending |
 
 ### Why overfitting stays low
-
-The architecture combines several independent mechanisms that collectively resist overfitting:
 
 **Multi-modal diversity** — Four separate components each learn from a different view of the same market. For overfitting to occur, all four would need to memorize the same patterns simultaneously. If one component drifts, the others remain stable and pull the fused output back toward generalization.
 
@@ -73,7 +107,9 @@ The architecture combines several independent mechanisms that collectively resis
 
 **Agent diversity term** — Four internal agents each produce independent predictions. The training loss includes a term that penalizes the agents for agreeing too strongly — encouraging diverse perspectives rather than converging to a single overfit solution.
 
-**Label smoothing** — Rather than training on hard labels, the model trains on softened targets. This prevents overconfidence on any specific training example, which is a primary driver of overfitting.
+**Epoch bagging** — Each epoch trains on a random 85% subset of available samples, reducing the model's ability to memorize any specific example.
+
+**Label smoothing** — Rather than training on hard labels, the model trains on softened targets. This prevents overconfidence on any specific training example.
 
 **Return-weighted loss** — Samples with larger actual market moves receive higher weight. This de-emphasizes borderline or noisy samples that would otherwise encourage memorization.
 
@@ -83,9 +119,7 @@ The architecture combines several independent mechanisms that collectively resis
 
 **Gradient clipping** — Limits parameter update magnitude each step, preventing drastic changes in response to any single batch.
 
-### Expected behavior at 140 epochs
-
-Based on the previous run and the expanded dataset, overfitting is expected to remain within 0.000–0.003 throughout the full run. The architecture has no single point of failure that would cause a sudden spike. Results will be confirmed when training completes.
+**Expanding validation** — Validation set grows over time rather than remaining fixed. This tests the model against an increasing proportion of unseen data as training progresses.
 
 ---
 
@@ -112,6 +146,7 @@ A 2025 ScienceDirect review of 187 deep learning financial forecasting studies c
 | Validation | Historical backtest only | Live market — MT5 Demo |
 | Execution layer | None (paper models) | Full MT5 order execution |
 | Overfitting (100 epochs) | Often present | **0.000** |
+| Training stability | Not addressed | 4-layer NaN guard + auto recovery |
 
 ### Honest limitations
 
@@ -129,12 +164,15 @@ A 2025 ScienceDirect review of 187 deep learning financial forecasting studies c
 
 | Parameter | Previous Run | Current Run |
 |---|---|---|
-| Epochs | 100 | 140 |
+| Epochs | 100 | 120 |
 | Training samples | ~16,000 | 46,000 (+188%) |
 | News events | 2,904 | 4,129 (+42%) |
 | Batch size | 32 | 32 (effective 64 with accumulation) |
 | Timeframes | M1 · M5 · M15 · H1 · H4 | M1 · M5 · M15 · H1 · H4 |
-| Overfitting | **0.000** — confirmed at end of training | Pending |
+| Validation mode | Fixed split | Expanding split |
+| NaN guard | Basic | 4-layer + auto recovery + quarantine |
+| Overfitting control | Passive | Active auto-control with target band |
+| Overfitting | **0.000** — confirmed | Pending |
 | Validated accuracy | 36.7% | Pending |
 
 ---
@@ -178,8 +216,8 @@ If any single filter fails → **HOLD**. The system waits for the next cycle.
 - **Input:** Multi-timeframe OHLCV data across 5 timeframes + news sentiment vectors
 - **Labels:** Derived from trade outcome simulation — whether TP or SL would have been hit — not raw price direction
 - **Sampling:** Streaming mode — samples drawn continuously from historical data
-- **Validation:** Time-based split to prevent data leakage — future data is never seen during training
-- **Checkpointing:** Automatic — resumes from last saved state if interrupted
+- **Validation:** Expanding time-based split — validation set grows as training progresses, future data is never seen during training
+- **Checkpointing:** Full state saved every epoch — model, optimizer, scheduler, epoch number. Resumes from last valid checkpoint if interrupted. Corrupted checkpoints are detected and discarded automatically.
 
 ---
 
@@ -205,7 +243,7 @@ Unauthorized reproduction, reverse engineering, or redistribution of any part of
 
 ## Status
 
-Active development. Currently training — 140 epoch run in progress.
+Active development. Currently training — 120 epoch run in progress.
 Live testing on MT5 Demo account follows training completion.
 Results are instrument-specific (XAUUSD) and depend on training data, market conditions, and configuration.
 
