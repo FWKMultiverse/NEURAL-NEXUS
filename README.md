@@ -92,12 +92,12 @@ The system monitors overfitting per epoch and applies graduated responses — le
 
 Overfitting occurs when a model memorizes training data rather than learning general patterns — it performs well on seen data but fails on unseen data. This is one of the most common failure modes in ML trading systems.
 
-| Run | Epochs | Overfitting at 0.000 | Overfitting at 0.001 | Peak |
-|---|---|---|---|---|
-| Previous run | 100 | ~95 epochs | ~5 epochs | 0.001 |
-| Current run | 120 | 109 epochs | 11 epochs | 0.001 |
+| Run | Epochs | Best model overfitting | Peak during training |
+|---|---|---|---|
+| Previous run | 100 | **0.000** | 0.001 (~5 epochs) |
+| Current run | 120 | **0.001** | 0.001 (11 epochs) |
 
-Both runs stayed within the 0.000–0.001 band throughout. Epochs touching 0.001 were scattered with no accumulation trend — always returning to 0.000 on the following epoch. Neither run ever crossed above 0.001.
+Both runs stayed within the 0.000–0.001 band throughout — never exceeded 0.001 at any point. Epochs touching 0.001 were scattered with no accumulation trend.
 
 ### Why overfitting stays low
 
@@ -172,7 +172,7 @@ The most significant difference is execution. Most hybrid LSTM-GNN studies remai
 | Validation mode | Fixed split | Expanding split |
 | NaN guard | Basic | 4-layer + auto recovery + quarantine |
 | Overfitting control | Passive | Active auto-control with target band |
-| Peak overfitting | 0.001 | 0.001 |
+| Best model overfitting | **0.000** | **0.001** |
 | Validated accuracy | 36.7% | **41.8%** (+5.1pp) |
 
 ---
@@ -245,7 +245,7 @@ Unauthorized reproduction, reverse engineering, or redistribution of any part of
 
 120-epoch training run complete — March 20, 2026.
 Validated accuracy: **41.8%** (2.09× above random on 5-class prediction).
-Peak overfitting: **0.001** across 120 epochs.
+Best model overfitting: **0.001**. Both runs confirmed within 0.000–0.001 band throughout.
 Live testing on MT5 Demo account in progress.
 
 Results are instrument-specific (XAUUSD) and depend on training data, market conditions, and configuration. Credentials and account details are stored locally and never shared or committed to any repository.
