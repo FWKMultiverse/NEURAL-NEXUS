@@ -94,10 +94,10 @@ Overfitting occurs when a model memorizes training data rather than learning gen
 
 | Run | Epochs | Overfitting at 0.000 | Overfitting at 0.001 | Peak |
 |---|---|---|---|---|
-| Previous run | 100 | 100 epochs | 0 epochs | 0.000 |
+| Previous run | 100 | ~95 epochs | ~5 epochs | 0.001 |
 | Current run | 120 | 109 epochs | 11 epochs | 0.001 |
 
-The 11 epochs that touched 0.001 were scattered across the full run with no accumulation trend — epochs 11, 21, 23, 35–37, 52, 103, 106, 119, and 120. All returned to 0.000 on the following epoch. The model never crossed above 0.001 across 120 full epochs.
+Both runs stayed within the 0.000–0.001 band throughout. Epochs touching 0.001 were scattered with no accumulation trend — always returning to 0.000 on the following epoch. Neither run ever crossed above 0.001.
 
 ### Why overfitting stays low
 
@@ -172,7 +172,7 @@ The most significant difference is execution. Most hybrid LSTM-GNN studies remai
 | Validation mode | Fixed split | Expanding split |
 | NaN guard | Basic | 4-layer + auto recovery + quarantine |
 | Overfitting control | Passive | Active auto-control with target band |
-| Peak overfitting | 0.000 | 0.001 |
+| Peak overfitting | 0.001 | 0.001 |
 | Validated accuracy | 36.7% | **41.8%** (+5.1pp) |
 
 ---
